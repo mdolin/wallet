@@ -31,11 +31,11 @@ func main() {
 
 	// Route handlers and endpoint
 	router.HandleFunc("/wallet/", database.Fetch).Methods("GET")
-	router.HandleFunc("/wallet/{name}", database.FetchByName).Methods("GET")
+	router.HandleFunc("/wallet/name/", database.FetchByName).Methods("GET")
 	router.HandleFunc("/wallet/", database.Create).Methods("POST")
-	router.HandleFunc("/wallet/{amount}", database.Deposit).Methods("POST")
-	router.HandleFunc("/wallet/{amount}", database.Withdrawal).Methods("POST")
-	router.HandleFunc("/wallet/{name}", database.DeleteByName).Methods("DELETE")
+	router.HandleFunc("/wallet/deposit/", database.Deposit).Methods("POST")
+	router.HandleFunc("/wallet/withdraw/", database.Withdraw).Methods("POST")
+	router.HandleFunc("/wallet/delete/", database.DeleteByName).Methods("DELETE")
 
 	// Serve the app
 	fmt.Println("Server at 8080")
