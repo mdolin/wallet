@@ -2,9 +2,13 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
-	model "wallet/models"
+	"net/http"
+	"strconv"
+
+	model "github.com/mdolin/wallet/models"
 
 	_ "github.com/lib/pq"
 )
@@ -14,19 +18,16 @@ const (
 	PORT = 5432
 )
 
-// If row doesn't exist return NoMatch
-var NoMatch = fmt.Errorf("no matching record")
-
 type Database struct {
 	Connection *sql.DB
 }
 
 func Initialize(username string, password string, database string) (Database, error) {
 	db := Database{}
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		HOST, PORT, username, password, database)
 
-	conn, err := sql.Open("postgres", dsn)
+	conn, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		return db, err
 	}
@@ -42,87 +43,168 @@ func Initialize(username string, password string, database string) (Database, er
 	return db, nil
 }
 
-func (db Database) FetchData() (*model.AccountDataList, error) {
-	list := &model.AccountDataList{}
+func (db Database) Fetch(w http.ResponseWriter, r *http.Request) {
+	response := model.Response{}
 
-	rows, err := db.Connection.Query("SELEFT * FROM account_data")
+	rows, err := db.Connection.Query("SELEFT * FROM account")
 
 	if err != nil {
-		return list, err
+		panic(err)
 	}
 
 	for rows.Next() {
-		var data model.AccountData
-		err := rows.Scan(&data.ID, &data.Name, &data.Currency, &data.Balance, &data.CreatedAt)
+		var account model.Account
+		err := rows.Scan(
+			&account.ID,
+			&account.Name,
+			&account.Currency,
+			&account.Balance,
+			&account.CreatedAt,
+		)
 
 		if err != nil {
-			return list, err
+			panic(err)
 		}
 
-		list.Accounts = append(list.Accounts, data)
-	}
+		response.Accounts = append(response.Accounts, account)
+		response.Type = "success"
 
-	return list, nil
+		json.NewEncoder(w).Encode(response)
+	}
 }
 
-func (db Database) CreateData(account *model.AccountData) error {
+func (db Database) FetchByName(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	response := model.Response{}
+
+	query := `SELECT * FROM account WHERE name = $1;`
+	row := db.Connection.QueryRow(query, name)
+
+	var account model.Account
+	err := row.Scan(
+		&account.ID,
+		&account.Name,
+		&account.Currency,
+		&account.Balance,
+		&account.CreatedAt,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	response.Accounts = append(response.Accounts, account)
+	response.Type = "success"
+
+	json.NewEncoder(w).Encode(response)
+}
+
+func (db Database) Create(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	currency := r.FormValue("currency")
+	balance := r.FormValue("balance")
+
 	var id int
 	var createdAt string
+	var bal float64
 
-	query := `INSERT INTO account_data (name, currency, balance) VALUES ($1, $2, $3) RETURNING id, created_at`
-	err := db.Connection.QueryRow(query, account.Name, account.Currency, account.Balance).Scan(&id, &createdAt)
+	response := model.Response{}
 
-	if err != nil {
-		return err
+	if balance == "" {
+		bal, _ = strconv.ParseFloat("0", 64)
+	} else {
+		bal, _ = strconv.ParseFloat(balance, 64)
 	}
 
-	account.ID = id
-	account.CreatedAt = createdAt
+	query := `INSERT INTO account (name, currency, balance) VALUES ($1, $2, $3) RETURNING id, created_at`
+	err := db.Connection.QueryRow(
+		query,
+		name,
+		currency,
+		bal).Scan(&id, &createdAt)
 
-	return nil
+	if err != nil {
+		panic(err)
+	}
+
+	response.Type = "success"
+	response.Message = "Account has been created"
+
+	json.NewEncoder(w).Encode(response)
 }
 
-func (db Database) FetchDataByID(id int) (model.AccountData, error) {
-	data := model.AccountData{}
-	query := `SELECT * FROM account_data WHERE name = $1;`
+func (db Database) Deposit(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	balance, _ := strconv.ParseFloat(r.FormValue("balance"), 64)
 
-	row := db.Connection.QueryRow(query, id)
-	err := row.Scan(&data.ID, &data.Name, &data.Currency, &data.Balance, &data.CreatedAt)
+	response := model.Response{}
+
+	var account model.Account
+
+	query := `UPDATE account SET balance = balance + $1 WHERE name = $2 RETURNING id, name, currency, balance, created_at;`
+	err := db.Connection.QueryRow(query,
+		balance,
+		name,
+	).Scan(
+		&account.ID,
+		&account.Name,
+		&account.Currency,
+		&account.Balance,
+		&account.CreatedAt,
+	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return data, NoMatch
-		}
-		return data, err
+		panic(err)
 	}
 
-	return data, nil
+	response.Accounts = append(response.Accounts, account)
+	response.Type = "success"
+
+	json.NewEncoder(w).Encode(response)
 }
 
-func (db Database) DeleteData(id int) error {
-	query := `DELETE FROM account_data WHERE id = $1;`
-	_, err := db.Connection.Exec(query, id)
+func (db Database) Withdrawal(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	balance, _ := strconv.ParseFloat(r.FormValue("balance"), 64)
+
+	response := model.Response{}
+
+	var account model.Account
+
+	query := `UPDATE account SET balance = balance - $1 WHERE name = $2 RETURNING id, name, currency, balance, created_at;`
+	err := db.Connection.QueryRow(query,
+		balance,
+		name,
+	).Scan(
+		&account.ID,
+		&account.Name,
+		&account.Currency,
+		&account.Balance,
+		&account.CreatedAt,
+	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return NoMatch
-		}
-		return err
+		panic(err)
 	}
 
-	return nil
+	response.Accounts = append(response.Accounts, account)
+	response.Type = "success"
+
+	json.NewEncoder(w).Encode(response)
 }
 
-func (db Database) UpdateData(id int, data model.AccountData) (model.AccountData, error) {
-	item := model.AccountData{}
-	query := `UPDATE account_data SET balance=$1 WHERE name=$4 RETURNING id, name, description, created_at;`
-	err := db.Connection.QueryRow(query, data.Balance, data.Name, data.Currency, id).Scan(&item.ID, &item.Name, &item.Currency, &item.Balance, &item.CreatedAt)
+func (db Database) DeleteByName(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	response := model.Response{}
+
+	query := `DELETE FROM account WHERE id = $1;`
+	_, err := db.Connection.Exec(query, name)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return item, NoMatch
-		}
-		return item, err
+		panic(err)
 	}
-	return item, nil
+
+	response.Type = "success"
+	response.Message = "Account has been deleted"
+
 }

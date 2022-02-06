@@ -1,32 +1,23 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
-	db "wallet/database"
-	"wallet/handler"
+
+	"github.com/gorilla/mux"
+	db "github.com/mdolin/wallet/database"
 )
 
 func main() {
-	addr := ":8080"
-	listener, err := net.Listen("tcp", addr)
-
-	if err != nil {
-		log.Fatalf("Error occurred: %s", err.Error())
-	}
-
+	// Database credential
 	dbUser, dbPassword, dbName :=
 		os.Getenv("POSTGRES_USER"),
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_DB")
 
+	// Init the database
 	database, err := db.Initialize(dbUser, dbPassword, dbName)
 
 	if err != nil {
@@ -35,31 +26,19 @@ func main() {
 
 	defer database.Connection.Close()
 
-	httpHandler := handler.NewHandler(database)
-	server := &http.Server{
-		Handler: httpHandler,
-	}
+	// Init the mux router
+	router := mux.NewRouter()
 
-	go func() {
-		server.Serve(listener)
-	}()
+	// Route handlers and endpoint
+	router.HandleFunc("/wallet/", database.Fetch).Methods("GET")
+	router.HandleFunc("/wallet/{name}", database.FetchByName).Methods("GET")
+	router.HandleFunc("/wallet/", database.Create).Methods("POST")
+	router.HandleFunc("/wallet/{amount}", database.Deposit).Methods("POST")
+	router.HandleFunc("/wallet/{amount}", database.Withdrawal).Methods("POST")
+	router.HandleFunc("/wallet/{name}", database.DeleteByName).Methods("DELETE")
 
-	defer Stop(server)
+	// Serve the app
+	fmt.Println("Server at 8080")
+	log.Fatal(http.ListenAndServe(":8000", router))
 
-	log.Printf("Started server on %s", addr)
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	log.Println(fmt.Sprint(<-ch))
-	log.Println("Stopping API server.")
-}
-
-func Stop(server *http.Server) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Could not shut down server correctly: %v\n", err)
-		os.Exit(1)
-	}
 }
