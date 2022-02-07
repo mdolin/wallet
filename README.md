@@ -8,7 +8,7 @@ I need to get familiar with how the Go programming language is communicating wit
 ## Main bits of the project
 * PostgreSQL database
 * Go PostgreSQL driver for handling the database
-* Eequest router for matching incoming requests
+* Request router for matching incoming requests
 * Create, Fetch, and Delete operations
 
 ## Structure of the project
@@ -33,6 +33,7 @@ I need to get familiar with how the Go programming language is communicating wit
 
 ## Requirements
 To run the project and tests you will need
+
 * [Go Programming language](https://go.dev/doc/install)
 * [Docker](https://www.docker.com/get-started)
 * [Docker Compose](https://docs.docker.com/compose/install/)
