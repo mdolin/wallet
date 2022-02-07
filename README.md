@@ -1,9 +1,9 @@
 ## Description
 The goal was to write a Wallet app where we can store the funds for each user. The Wallet app is responsible to store the funds and provide functionality for manipulating the balance.
 
-The application is using "GET", "POST" and "DELETE" methods for creating, adding, removing funds and queri for the current state of the Wallet. All the data is written to postgres database.
+The application is using "POST", "DELETE" and "GET" methods for creating, adding, removing funds and queries for the current state of the Wallet. All the data is written to the PostgreSQL database.
 
-I need to get familiar how Go programming language is communicating with postgres so I was using different resources. Resources are listed below in the [Useful resources](#useful-resources) section.
+I need to get familiar with how the Go programming language is communicating with PostgreSQL so I was using different resources. Resources are listed below in the [Useful resources](#useful-resources) section.
 
 ## Main bits of the project
 * PostgreSQL database
