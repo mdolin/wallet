@@ -99,7 +99,7 @@ constraint balance_non_negative check (balance >= 0.0)
 Alternatively, we can use [golang-migrate](https://github.com/golang-migrate/migrate) to manage our database migrations. 
 
 ## Test Wallet API
-In a separate terminal, for graphical user interface [Postman](https://www.postman.com/) can be used, or [curl](https://curl.se/) command-line tool.
+For graphical user interface [Postman](https://www.postman.com/) can be used, or [curl](https://curl.se/) command-line tool in a separate terminal.
 
 ### Add new user
 ```
