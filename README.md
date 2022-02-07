@@ -1,4 +1,4 @@
-## 
+## Description
 The goal was to write a Wallet app where we can store the funds for each user. The Wallet app is responsible to store the funds and provide functionality for manipulating the balance.
 
 The application is using "GET", "POST" and "DELETE" methods for creating, adding, removing funds and queri for the current state of the Wallet. All the data is written to postgres database.
