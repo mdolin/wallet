@@ -62,14 +62,6 @@ wallet_database   docker-entrypoint.sh postgres   Up      0.0.0.0:5432->5432/tcp
 
 ```
 
-If encounter an error 
-```
-Error starting userland proxy: listen tcp4 0.0.0.0:5432: bind: address already in use
-```
-it means that where you are trying to run the app PostgreSQL is already listening on that port. Similar can happen for port 8000.
-
-You can shut down the services running on that port or change the port for the app.
-
 ### Populating the database
 Connect to the database and add the table.
 
